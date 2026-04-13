@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, use } from 'react';
 import Image from 'next/image';
 import { ShoppingCart, Plus, Minus, X, Search, ChevronRight, MapPin, Package, ArrowRight } from 'lucide-react';
 import { getBusinessBySlug, getProducts, getCategories } from '@/lib/db-actions';
@@ -487,7 +487,8 @@ function CartDrawer({
 
 // ─── Main Store Page ──────────────────────────────────────────────────────────
 
-export default function StorePage({ params }: { params: { slug: string } }) {
+export default function StorePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const [business, setBusiness] = useState<Business | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -501,7 +502,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
   useEffect(() => {
     async function load() {
       try {
-        const biz = await getBusinessBySlug(params.slug);
+        const biz = await getBusinessBySlug(slug);
         if (!biz) { setNotFound(true); return; }
         setBusiness(biz);
         const [prods, cats] = await Promise.all([getProducts(biz.id), getCategories(biz.id)]);
@@ -515,7 +516,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
       }
     }
     load();
-  }, [params.slug]);
+  }, [slug]);
 
   const filteredProducts = useMemo(() => {
     let list = products;
