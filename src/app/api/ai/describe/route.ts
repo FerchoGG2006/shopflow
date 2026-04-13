@@ -8,48 +8,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Prompt requerido' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      console.error('GEMINI_API_KEY no está definida en .env.local');
-      return NextResponse.json({ error: 'Clave de IA no configurada en el servidor' }, { status: 500 });
+      console.error('ANTHROPIC_API_KEY no está definida en .env.local');
+      return NextResponse.json({ error: 'Clave de Anthropic no configurada' }, { status: 500 });
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const systemInstruction = `Eres un redactor experto en e-commerce para Latinoamerica. 
+Recibirás información de un producto (nombre, negocio, categoría, precio).
+Tu tarea es generar una descripción corta (máximo 40 palabras), atractiva y persuasiva para un catálogo digital.
+Sigue estas reglas:
+- Tono cercano y profesional.
+- Enfócate en el beneficio.
+- NO menciones el precio en la descripción.
+- NO uses comillas ni introducciones como "Aquí tienes...".
+- Responde SOLO con el texto de la descripción.`;
 
-    const body = {
-      contents: [
-        {
-          parts: [
-            {
-              text: `Eres un redactor experto en e-commerce para Latinoamérica. Genera una descripción corta (máximo 40 palabras), atractiva y persuasiva para un catálogo digital. No menciones el precio. Responde SOLO con la descripción, sin comillas.\n\nProducto: ${prompt}`,
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        maxOutputTokens: 200,
-        temperature: 0.7,
-      },
-    };
-
-    const response = await fetch(url, {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 250,
+        system: systemInstruction,
+        messages: [
+          { role: 'user', content: `Genera la descripción para: ${prompt}` }
+        ],
+      }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Gemini API respondió con error:', JSON.stringify(data));
+      console.error('Anthropic API respondió con error:', JSON.stringify(data));
       return NextResponse.json(
-        { error: data.error?.message || 'Error de la API de Gemini' },
+        { error: data.error?.message || 'Error de la API de Anthropic' },
         { status: response.status }
       );
     }
 
-    const description =
-      data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    const description = data.content?.[0]?.text?.trim() || '';
 
     return NextResponse.json({ description });
   } catch (error: any) {
