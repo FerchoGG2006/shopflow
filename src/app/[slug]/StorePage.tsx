@@ -9,7 +9,7 @@ import { Business, Product, CartItem, ProductCategory } from '@/types';
 
 // ─── Skeleton ───────────────────────────────────────────────────────────────
 
-function Skeleton({ className }: { className?: string }) {
+function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <div
       className={className}
@@ -18,6 +18,7 @@ function Skeleton({ className }: { className?: string }) {
         backgroundSize: '200% 100%',
         animation: 'shimmer 1.5s infinite',
         borderRadius: 8,
+        ...style,
       }}
     />
   );
