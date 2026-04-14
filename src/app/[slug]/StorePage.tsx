@@ -6,6 +6,15 @@ import { ShoppingCart, Plus, Minus, X, Search, ChevronRight, MapPin, Package, Ar
 import { getBusinessBySlug, getProducts, getCategories } from '@/lib/db-actions';
 import { buildWhatsAppMessage, buildWhatsAppURL, formatCurrency, calculateCartTotal, calculateCartCount } from '@/utils/whatsapp';
 import { Business, Product, CartItem, ProductCategory } from '@/types';
+import MenuBook from '@/components/MenuBook/MenuBook';
+import { Viewport } from 'next';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 // ─── Skeleton ───────────────────────────────────────────────────────────────
 
@@ -499,6 +508,7 @@ export default function StorePage({ params }: { params: Promise<{ slug: string }
   const [cartOpen, setCartOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'book'>('book');
 
   useEffect(() => {
     async function load() {
@@ -574,9 +584,56 @@ export default function StorePage({ params }: { params: Promise<{ slug: string }
   const accentColor = business?.accentColor || '#E84545';
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: cartCount > 0 ? 100 : 40 }}>
+    <div style={{ minHeight: '100vh', background: viewMode === 'book' ? '#000' : 'var(--bg)', paddingBottom: cartCount > 0 ? 100 : 40 }}>
 
-      {/* ── Header / Banner ── */}
+      {/* ── View Switcher ── */}
+      {!loading && !notFound && (
+        <div style={{
+          position: 'fixed', top: 20, right: 20, zIndex: 100,
+          display: 'flex', gap: 8, background: 'rgba(255,255,255,0.8)',
+          backdropFilter: 'blur(8px)', padding: 4, borderRadius: 'var(--radius-full)',
+          boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)',
+        }}>
+          <button
+            onClick={() => setViewMode('grid')}
+            style={{
+              padding: '6px 14px', borderRadius: 'var(--radius-full)',
+              background: viewMode === 'grid' ? accentColor : 'transparent',
+              color: viewMode === 'grid' ? '#fff' : 'var(--text-secondary)',
+              border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)',
+              fontWeight: 600, fontSize: 12, transition: 'all 0.2s',
+            }}
+          >
+            Cuadrícula
+          </button>
+          <button
+            onClick={() => setViewMode('book')}
+            style={{
+              padding: '6px 14px', borderRadius: 'var(--radius-full)',
+              background: viewMode === 'book' ? accentColor : 'transparent',
+              color: viewMode === 'book' ? '#fff' : 'var(--text-secondary)',
+              border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)',
+              fontWeight: 600, fontSize: 12, transition: 'all 0.2s',
+            }}
+          >
+            Modo Carta 📖
+          </button>
+        </div>
+      )}
+
+      {viewMode === 'book' && business ? (
+        <MenuBook
+          business={business}
+          products={products}
+          categories={categories}
+          onAddToCart={addToCart}
+          cartCount={cartCount}
+          onOpenCart={() => setCartOpen(true)}
+          totalAmount={cartTotal}
+        />
+      ) : (
+        <>
+          {/* ── Header / Banner ── */}
       {loading ? (
         <div style={{ height: 200, background: 'var(--surface-2)' }}>
           <Skeleton style={{ width: '100%', height: '100%', borderRadius: 0 }} />
@@ -734,9 +791,11 @@ export default function StorePage({ params }: { params: Promise<{ slug: string }
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* ── Floating Cart Button ── */}
-      {cartCount > 0 && (
+      {cartCount > 0 && viewMode === 'grid' && (
         <div style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
           zIndex: 50,
