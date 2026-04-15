@@ -7,6 +7,7 @@ import { getBusinessBySlug, getProducts, getCategories } from '@/lib/db-actions'
 import { buildWhatsAppMessage, buildWhatsAppURL, formatCurrency, calculateCartTotal, calculateCartCount } from '@/utils/whatsapp';
 import { Business, Product, CartItem, ProductCategory } from '@/types';
 import MenuBook from '@/components/MenuBook/MenuBook';
+import { publishOrder as publishKDSOrder } from '@/lib/kds-orders';
 import { Viewport } from 'next';
 
 export const viewport: Viewport = {
@@ -196,6 +197,23 @@ function CartDrawer({
 
   function handleSendOrder() {
     if (!name.trim()) return;
+
+    // ── Publish to KDS (fire-and-forget, non-blocking) ───────────────────
+    publishKDSOrder({
+      businessSlug: business.slug,
+      table: name.trim(),
+      items: items.map(i => ({
+        name: i.product.name,
+        qty: i.quantity,
+        notes: '',
+      })),
+      total,
+      deliveryType: delivery,
+      deliveryAddress: delivery === 'delivery' ? address : undefined,
+      paymentMethod: payment,
+    }).catch(() => {/* KDS publish failed silently, WhatsApp still goes through */});
+    // ─────────────────────────────────────────────────────────────────────
+
     const message = buildWhatsAppMessage({
       business,
       items,
